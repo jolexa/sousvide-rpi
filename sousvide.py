@@ -1,11 +1,12 @@
 import os
 import glob
-import time
+from time import sleep
 
 import RPi.GPIO as io
 
 import subprocess
 from optparse import OptionParser
+from datetime import datetime
 
 base_dir = '/sys/bus/w1/devices/'
 device_folder = glob.glob(base_dir + '28*')[0]
@@ -25,6 +26,14 @@ def tempdata():
     temp_f = temp_C * 9.0 / 5.0 + 32.0
     return temp_f
 
+def logtemp( temp ):
+    with open("temp.csv", "a") as myfile:
+        myfile.write(datetime.now().time().isoformat() + "," + str(temp) + "\n")
+
+def logpower( power ):
+    with open("power.csv", "a") as myfile:
+        myfile.write(datetime.now().time().isoformat() + "," + str(power) + "\n")
+
 def setup_1wire():
   os.system("sudo modprobe w1-gpio && sudo modprobe w1-therm")
 
@@ -42,6 +51,7 @@ parser.add_option("-i", "--integral", type = int, default = 2)
 parser.add_option("-b", "--bias", type = int, default = 22)
 (options, args) = parser.parse_args()
 print ('Target temp is %d' % (options.target))
+target = options.target
 P = options.prop
 I = options.integral
 B = options.bias
@@ -62,16 +72,19 @@ print("Initial temperature ramp up")
 while (target - temperature > 10):
     sleep(15)
     temperature=tempdata()
-    print(temperature)
+    print("temp: " + str(temperature))
+    logtemp(temperature)
 
 print("Entering control loop")
 while True:
     temperature=tempdata()
-    print(temperature)
+    print("temp: " + str(temperature))
+    logtemp(temperature)
     error = target - temperature
     interror = interror + error
     power = B + ((P * error) + ((I * interror)/100))/100
-    print power
+    print("power: " + str(power))
+    logpower(power)
     # Make sure that if power should be off then it is
     if (state=="off"):
         turn_off()
