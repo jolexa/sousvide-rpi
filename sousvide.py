@@ -38,9 +38,11 @@ def setup_1wire():
   os.system("sudo modprobe w1-gpio && sudo modprobe w1-therm")
 
 def turn_on():
+    print(datetime.now().time().isoformat())
     io.output(power_pin, True)
 
 def turn_off():
+    print(datetime.now().time().isoformat())
     io.output(power_pin, False)
 
 #Get command line options
@@ -48,13 +50,13 @@ parser = OptionParser()
 parser.add_option("-t", "--target", type = int, default = 140)
 parser.add_option("-p", "--prop", type = int, default = 6)
 parser.add_option("-i", "--integral", type = int, default = 2)
-parser.add_option("-b", "--bias", type = int, default = 22)
+parser.add_option("-b", "--bias", type = int, default = 40)
 (options, args) = parser.parse_args()
 print ('Target temp is %d' % (options.target))
 target = options.target
 P = options.prop
-I = options.integral
-B = options.bias
+I = options.integral # I is a factor of the error that is carried forward
+B = options.bias # Bias is the starting guess of % power on
 # Initialise some variables for the control loop
 interror = 0
 pwr_cnt=1
@@ -69,7 +71,7 @@ turn_on()
 
 temperature=tempdata()
 print("Initial temperature ramp up")
-while (target - temperature > 10):
+while (target - temperature > 4):
     sleep(15)
     temperature=tempdata()
     print("temp: " + str(temperature))
@@ -82,7 +84,7 @@ while True:
     logtemp(temperature)
     error = target - temperature
     interror = interror + error
-    power = B + ((P * error) + ((I * interror)/100))/100
+    power = B + ((P * error) + (I * interror))
     print("power: " + str(power))
     logpower(power)
     # Make sure that if power should be off then it is
